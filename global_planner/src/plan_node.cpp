@@ -39,6 +39,7 @@
 #include <navfn/MakeNavPlan.h>
 #include <boost/shared_ptr.hpp>
 #include <costmap_2d/costmap_2d_ros.h>
+#include <std_srvs/Empty.h>
 
 namespace cm = costmap_2d;
 namespace rm = geometry_msgs;
@@ -55,19 +56,26 @@ class PlannerWithCostmap : public GlobalPlanner {
     public:
         PlannerWithCostmap(string name, Costmap2DROS* cmap);
         bool makePlanService(navfn::MakeNavPlan::Request& req, navfn::MakeNavPlan::Response& resp);
+        bool clearCostmapService(std_srvs::Empty::Request &req, std_srvs::Empty::Response &resp);
 
     private:
         void poseCallback(const rm::PoseStamped::ConstPtr& goal);
         Costmap2DROS* cmap_;
-        ros::ServiceServer make_plan_service_;
+        ros::ServiceServer make_plan_service_, clear_costmaps_srv_;
         ros::Subscriber pose_sub_;
 };
+
+bool PlannerWithCostmap::clearCostmapService(std_srvs::Empty::Request &req, std_srvs::Empty::Response &resp){
+    //clear the costmaps
+    cmap_->resetLayers();
+    return true;
+}
 
 bool PlannerWithCostmap::makePlanService(navfn::MakeNavPlan::Request& req, navfn::MakeNavPlan::Response& resp) {
     vector<PoseStamped> path;
 
-    req.start.header.frame_id = "/map";
-    req.goal.header.frame_id = "/map";
+    // req.start.header.frame_id = "/map";
+    // req.goal.header.frame_id = "/map";
     bool success = makePlan(req.start, req.goal, path);
     resp.plan_found = success;
     if (success) {
@@ -100,6 +108,7 @@ PlannerWithCostmap::PlannerWithCostmap(string name, Costmap2DROS* cmap) :
     cmap_ = cmap;
     make_plan_service_ = private_nh.advertiseService("make_plan", &PlannerWithCostmap::makePlanService, this);
     pose_sub_ = private_nh.subscribe<rm::PoseStamped>("goal", 1, &PlannerWithCostmap::poseCallback, this);
+    clear_costmaps_srv_ = private_nh.advertiseService("clear_costmaps", &PlannerWithCostmap::clearCostmapService, this);
 }
 
 } // namespace
