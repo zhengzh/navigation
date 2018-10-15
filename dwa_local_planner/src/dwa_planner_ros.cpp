@@ -118,6 +118,7 @@ namespace dwa_local_planner {
       }
       
       initialized_ = true;
+      first_goal_ = true;
 
       dsrv_ = new dynamic_reconfigure::Server<DWAPlannerConfig>(private_nh);
       dynamic_reconfigure::Server<DWAPlannerConfig>::CallbackType cb = boost::bind(&DWAPlannerROS::reconfigureCB, this, _1, _2);
@@ -128,13 +129,33 @@ namespace dwa_local_planner {
     }
   }
   
+  double DWAPlannerROS::distance(const geometry_msgs::PoseStamped& p1, const geometry_msgs::PoseStamped& p2)
+  {
+    return hypot(p1.pose.position.x - p2.pose.position.x, p1.pose.position.y - p2.pose.position.y);
+  }
+
   bool DWAPlannerROS::setPlan(const std::vector<geometry_msgs::PoseStamped>& orig_global_plan) {
     if (! isInitialized()) {
       ROS_ERROR("This planner has not been initialized, please call initialize() before using this planner");
       return false;
     }
+
     //when we get a new plan, we also want to clear any latch we may have on goal tolerances
-    latchedStopRotateController_.resetLatching();
+    geometry_msgs::PoseStamped current_global_goal = orig_global_plan.back();
+
+    if (first_goal_) {
+      latchedStopRotateController_.resetLatching();
+      previous_global_goal_ = current_global_goal;
+      first_goal_ = false;
+    } else {
+      double dist = distance(current_global_goal, previous_global_goal_);
+      if (dist > 0.2) {
+        latchedStopRotateController_.resetLatching();
+      }
+      previous_global_goal_ = current_global_goal;
+    }
+    
+
 
     ROS_INFO("Got new plan");
     return dp_->setPlan(orig_global_plan);

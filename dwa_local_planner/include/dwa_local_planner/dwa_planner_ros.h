@@ -114,7 +114,7 @@ namespace dwa_local_planner {
        */
       bool isGoalReached();
 
-
+      double distance(const geometry_msgs::PoseStamped& p1, const geometry_msgs::PoseStamped& p2);
 
       bool isInitialized() {
         return initialized_;
@@ -147,10 +147,10 @@ namespace dwa_local_planner {
       tf::Stamped<tf::Pose> current_pose_;
 
       base_local_planner::LatchedStopRotateController latchedStopRotateController_;
-
+      geometry_msgs::PoseStamped previous_global_goal_;
 
       bool initialized_;
-
+      bool first_goal_;
 
       base_local_planner::OdometryHelperRos odom_helper_;
       std::string odom_topic_;
